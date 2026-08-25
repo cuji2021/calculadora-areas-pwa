@@ -373,7 +373,7 @@ function obtenerEstructuraProyecto() {
 
     // Obtener croquis si existe
     const croquisImg = amb.querySelector('.croquis-img');
-    const croquisData = (croquisImg && croquisImg.src && croquisImg.src.startsWith('data:')) ? croquisImg.src : null;
+    const croquisData = (croquisImg && croquisImg.src && croquisImg.src.startsWith('data:image')) ? croquisImg.src : null;
 
     ambientes.push({ nombre, superficie, acabado, desperdicio, mediciones, croquis: croquisData });
   });
@@ -552,7 +552,10 @@ async function generarPDF(compartir = false) {
   let posY = finalY + 25;
   document.querySelectorAll('.ambiente-card').forEach((amb, idx) => {
     const croquisImg = amb.querySelector('.croquis-img');
-    if (croquisImg && croquisImg.src && croquisImg.src.startsWith('data:')) {
+    const preview = amb.querySelector('.croquis-preview');
+    const tieneCroquis = croquisImg && croquisImg.src && croquisImg.src.startsWith('data:image') && !preview.classList.contains('hidden');
+    
+    if (tieneCroquis) {
       const nombreAmb = amb.querySelector('.ambiente-nombre').value || `Ambiente ${idx + 1}`;
       
       if (posY > 220) {
@@ -565,7 +568,12 @@ async function generarPDF(compartir = false) {
       doc.setTextColor(51, 65, 85);
       doc.text(`Croquis: ${nombreAmb}`, 14, posY);
       posY += 5;
-      doc.addImage(croquisImg.src, 'PNG', 14, posY, 90, 67);
+      try {
+        const formato = croquisImg.src.startsWith('data:image/jpeg') ? 'JPEG' : 'PNG';
+        doc.addImage(croquisImg.src, formato, 14, posY, 90, 67);
+      } catch (e) {
+        console.warn('Error al agregar croquis al PDF:', e);
+      }
       posY += 75;
     }
   });
@@ -630,7 +638,7 @@ function abrirCroquis(idAmbiente) {
   // Cargar croquis existente si hay
   const ambEl = document.getElementById(idAmbiente);
   const imgExistente = ambEl.querySelector('.croquis-img');
-  if (imgExistente && imgExistente.src && imgExistente.src.startsWith('data:')) {
+  if (imgExistente && imgExistente.src && imgExistente.src.startsWith('data:image')) {
     const img = new Image();
     img.onload = function () {
       croquisCtx.drawImage(img, 0, 0, croquisCanvas.width, croquisCanvas.height);
@@ -673,7 +681,8 @@ function cerrarCroquis() {
 
 function guardarCroquis() {
   if (!croquisCanvas || !croquisAmbienteActual) return;
-  const dataURL = croquisCanvas.toDataURL('image/png');
+  // Usar JPEG con calidad 0.6 para reducir tamaño en localStorage
+  const dataURL = croquisCanvas.toDataURL('image/jpeg', 0.6);
   const ambEl = document.getElementById(croquisAmbienteActual);
   const preview = ambEl.querySelector('.croquis-preview');
   const img = ambEl.querySelector('.croquis-img');
