@@ -410,20 +410,38 @@ function guardarProyecto() {
 }
 
 function abrirHistorial() {
+  document.getElementById('buscarHistorial').value = '';
+  renderHistorial('');
+  document.getElementById('modalHistorial').classList.remove('hidden');
+}
+
+function filtrarHistorial() {
+  const filtro = document.getElementById('buscarHistorial').value.trim().toLowerCase();
+  renderHistorial(filtro);
+}
+
+function renderHistorial(filtro) {
   const historial = JSON.parse(localStorage.getItem('historialMediciones') || '[]');
   const container = document.getElementById('listaHistorial');
   container.innerHTML = '';
-  if (historial.length === 0) {
-    container.innerHTML = '<p class="text-xs text-slate-400 text-center py-4">No hay mediciones guardadas.</p>';
+
+  const filtrados = filtro
+    ? historial.filter(p => (p.cliente + ' ' + p.direccion).toLowerCase().includes(filtro))
+    : historial;
+
+  if (filtrados.length === 0) {
+    container.innerHTML = '<p class="text-xs text-slate-400 text-center py-4">No hay mediciones que coincidan.</p>';
   } else {
-    historial.forEach(p => {
+    filtrados.forEach(p => {
+      const direccion = p.direccion || 'Sin dirección';
       container.insertAdjacentHTML('beforeend', `
         <div class="p-3 bg-slate-50 border rounded-xl flex justify-between items-center text-xs">
-          <div>
-            <div class="font-bold text-slate-800">${p.cliente}</div>
+          <div class="flex-1 min-w-0 mr-2">
+            <div class="font-bold text-slate-800 truncate">${p.cliente}</div>
+            <div class="text-[10px] text-slate-500 truncate">📍 ${direccion}</div>
             <div class="text-[10px] text-slate-400">${p.fecha} - ${p.total}</div>
           </div>
-          <div class="flex gap-1">
+          <div class="flex gap-1 shrink-0">
             <button onclick="cargarProyecto('${p.id}')" class="px-2 py-1 bg-blue-600 text-white font-bold rounded">Cargar</button>
             <button onclick="eliminarProyecto('${p.id}')" class="px-2 py-1 bg-red-100 text-red-600 font-bold rounded">✕</button>
           </div>
@@ -431,7 +449,6 @@ function abrirHistorial() {
       `);
     });
   }
-  document.getElementById('modalHistorial').classList.remove('hidden');
 }
 
 function cerrarHistorial() { document.getElementById('modalHistorial').classList.add('hidden'); }

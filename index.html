@@ -306,7 +306,7 @@
       <div
         class="bg-white w-full max-w-md rounded-2xl p-4 shadow-xl max-h-[80vh] flex flex-col"
       >
-        <div class="flex justify-between items-center border-b pb-2 mb-3">
+        <div class="flex justify-between items-center border-b pb-2 mb-2">
           <h3 class="font-bold text-slate-800 text-sm">Mediciones Guardadas</h3>
           <button
             onclick="cerrarHistorial()"
@@ -315,6 +315,13 @@
             ✕
           </button>
         </div>
+        <input
+          type="text"
+          id="buscarHistorial"
+          placeholder="🔍 Buscar por nombre o dirección..."
+          class="w-full text-xs p-2 mb-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          oninput="filtrarHistorial()"
+        />
         <div
           id="listaHistorial"
           class="overflow-y-auto space-y-2 flex-1 pr-1"
