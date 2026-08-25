@@ -581,8 +581,18 @@ async function generarPDF(compartir = false) {
       doc.text(`Croquis: ${nombreAmb}`, 14, posY);
       posY += 5;
       try {
-        const formato = src.startsWith('data:image/jpeg') ? 'JPEG' : 'PNG';
-        doc.addImage(src, formato, 14, posY, 90, 67);
+        // Redimensionar croquis para PDF (max 400px ancho) para compatibilidad móvil
+        const imgTemp = new Image();
+        imgTemp.src = src;
+        const canvasTemp = document.createElement('canvas');
+        const maxAncho = 400;
+        const ratio = imgTemp.naturalWidth ? Math.min(maxAncho / imgTemp.naturalWidth, 1) : 1;
+        canvasTemp.width = (imgTemp.naturalWidth || 400) * ratio;
+        canvasTemp.height = (imgTemp.naturalHeight || 300) * ratio;
+        const ctxTemp = canvasTemp.getContext('2d');
+        ctxTemp.drawImage(imgTemp, 0, 0, canvasTemp.width, canvasTemp.height);
+        const srcReducido = canvasTemp.toDataURL('image/jpeg', 0.5);
+        doc.addImage(srcReducido, 'JPEG', 14, posY, 90, 67);
       } catch (e) {
         console.warn('Error al agregar croquis al PDF:', e);
       }
@@ -613,7 +623,14 @@ async function generarPDF(compartir = false) {
       doc.save(nombreArchivo);
     }
   } else {
-    doc.save(nombreArchivo);
+    // En móvil, abrir el PDF en nueva pestaña para visualización directa
+    const pdfBlob = doc.output('blob');
+    const blobUrl = URL.createObjectURL(pdfBlob);
+    const link = document.createElement('a');
+    link.href = blobUrl;
+    link.download = nombreArchivo;
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
   }
 }
 
