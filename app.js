@@ -696,7 +696,8 @@ function guardarEstadoCroquis() {
 
 function cambiarGrosorCroquis(grosor) {
   if (croquisCtx) croquisCtx.lineWidth = grosor;
-  // Actualizar botones activos
+  // Desactivar modo texto al cambiar grosor
+  if (modoTexto) toggleModoTexto();
   document.querySelectorAll('.grosor-btn').forEach(btn => btn.classList.remove('ring-2', 'ring-blue-500'));
   event.target.classList.add('ring-2', 'ring-blue-500');
 }
