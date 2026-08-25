@@ -389,6 +389,16 @@ function obtenerEstructuraProyecto() {
 }
 
 function guardarProyecto() {
+  const cliente = document.getElementById('clienteNombre').value.trim();
+  const direccion = document.getElementById('direccionProyecto').value.trim();
+
+  if (!cliente || !direccion) {
+    mostrarNotificacion('Datos incompletos', 'Debes ingresar el nombre del proyecto y la dirección antes de guardar.', '⚠️', 'bg-amber-100', 'text-amber-700');
+    if (!cliente) document.getElementById('clienteNombre').focus();
+    else document.getElementById('direccionProyecto').focus();
+    return;
+  }
+
   const proyecto = obtenerEstructuraProyecto();
   let historial = JSON.parse(localStorage.getItem('historialMediciones') || '[]');
   const index = historial.findIndex(p => p.id === proyecto.id);
