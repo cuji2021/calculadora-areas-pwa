@@ -370,6 +370,40 @@
       </div>
     </div>
 
+    <!-- Modal Croquis Texto -->
+    <div
+      id="modalTexto"
+      class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden z-[60] p-4 flex items-center justify-center"
+    >
+      <div class="bg-white w-full max-w-xs rounded-2xl p-5 shadow-2xl space-y-4">
+        <div class="text-center">
+          <div class="w-10 h-10 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center mx-auto text-lg font-bold">Aa</div>
+          <h3 class="font-bold text-slate-900 text-sm mt-2">Agregar texto al croquis</h3>
+        </div>
+        <input
+          type="text"
+          id="inputTextoCroquis"
+          placeholder="Ej: 3.50m, Puerta, Ventana..."
+          class="w-full text-sm p-3 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 text-center font-semibold"
+          onkeydown="if(event.key==='Enter') confirmarTexto()"
+        />
+        <div class="grid grid-cols-2 gap-2">
+          <button
+            onclick="cancelarTexto()"
+            class="py-2.5 bg-slate-100 text-slate-700 font-bold text-xs rounded-xl hover:bg-slate-200 active:scale-95 transition"
+          >
+            Cancelar
+          </button>
+          <button
+            onclick="confirmarTexto()"
+            class="py-2.5 bg-purple-600 text-white font-bold text-xs rounded-xl shadow hover:bg-purple-500 active:scale-95 transition"
+          >
+            Colocar ✓
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- Modal Salir -->
     <div
       id="modalSalir"

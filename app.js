@@ -719,13 +719,11 @@ function obtenerPosicion(e) {
 function iniciarTrazo(e) {
   if (modoTexto) {
     const pos = obtenerPosicion(e);
-    const texto = prompt('Escribe el texto:');
-    if (texto && texto.trim()) {
-      croquisCtx.font = `bold ${Math.max(croquisCtx.lineWidth * 4, 14)}px Arial`;
-      croquisCtx.fillStyle = croquisCtx.strokeStyle;
-      croquisCtx.fillText(texto.trim(), pos.x, pos.y);
-      guardarEstadoCroquis();
-    }
+    textoPosX = pos.x;
+    textoPosY = pos.y;
+    document.getElementById('modalTexto').classList.remove('hidden');
+    document.getElementById('inputTextoCroquis').value = '';
+    setTimeout(() => document.getElementById('inputTextoCroquis').focus(), 100);
     return;
   }
   dibujando = true;
@@ -763,6 +761,9 @@ function dibujarTrazoTouch(e) {
 }
 
 // --- MODO TEXTO ---
+let textoPosX = 0;
+let textoPosY = 0;
+
 function toggleModoTexto() {
   modoTexto = !modoTexto;
   const btn = document.getElementById('btnModoTexto');
@@ -775,4 +776,19 @@ function toggleModoTexto() {
     btn.classList.add('bg-purple-100', 'text-purple-700');
     croquisCanvas.style.cursor = 'crosshair';
   }
+}
+
+function confirmarTexto() {
+  const texto = document.getElementById('inputTextoCroquis').value.trim();
+  if (texto && croquisCtx) {
+    croquisCtx.font = `bold ${Math.max(croquisCtx.lineWidth * 4, 14)}px Arial`;
+    croquisCtx.fillStyle = croquisCtx.strokeStyle;
+    croquisCtx.fillText(texto, textoPosX, textoPosY);
+    guardarEstadoCroquis();
+  }
+  document.getElementById('modalTexto').classList.add('hidden');
+}
+
+function cancelarTexto() {
+  document.getElementById('modalTexto').classList.add('hidden');
 }
