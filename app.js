@@ -344,10 +344,13 @@ function eliminarElemento(id) {
 function calcularTotales() {
   let granTotalM2 = 0;
   let granTotalM = 0;
+  let totalPersianas = 0;
 
   document.querySelectorAll('.ambiente-card').forEach(amb => {
     let areaBaseM2 = 0;
     let metroBaseM = 0;
+    const superficie = amb.querySelector('.superficie-val').value.toLowerCase().trim();
+    const esPersiana = superficie === 'persiana';
 
     amb.querySelectorAll('.medicion-row').forEach(med => {
       const largo = parseFloat(med.querySelector('.largo-val').value) || 0;
@@ -380,8 +383,12 @@ function calcularTotales() {
     }
     amb.querySelector('.subtotal-val').innerText = subtotalTexto || '0.00 m²';
 
-    granTotalM2 += totalAmbienteM2;
-    granTotalM += totalAmbienteM;
+    if (esPersiana) {
+      totalPersianas += totalAmbienteM2 + totalAmbienteM;
+    } else {
+      granTotalM2 += totalAmbienteM2;
+      granTotalM += totalAmbienteM;
+    }
   });
 
   let resumenHTML = '';
@@ -394,6 +401,16 @@ function calcularTotales() {
   }
   if (resumenHTML === '') resumenHTML = `0.00 <span class="text-sm">m²</span>`;
   document.getElementById('granTotal').innerHTML = resumenHTML;
+
+  // Mostrar persianas aparte
+  const persianaResumen = document.getElementById('resumenPersianas');
+  if (totalPersianas > 0) {
+    persianaResumen.classList.remove('hidden');
+    persianaResumen.querySelector('.persianas-total').innerText = totalPersianas.toFixed(2);
+  } else {
+    persianaResumen.classList.add('hidden');
+  }
+
 }
 
 // --- GUARDADO E HISTORIAL ---
@@ -628,7 +645,16 @@ async function generarPDF(compartir = false) {
   doc.setFontSize(10);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(30, 58, 138);
-  doc.text(`TOTAL: ${totalGeneral}`, 104, finalY + 10);
+  doc.text(`TOTAL MATERIAL: ${totalGeneral}`, 104, finalY + 10);
+
+  // Total persianas separado si hay
+  const persianaEl = document.getElementById('resumenPersianas');
+  if (!persianaEl.classList.contains('hidden')) {
+    const totalPers = persianaEl.querySelector('.persianas-total').innerText;
+    doc.setFontSize(9);
+    doc.setTextColor(100, 50, 150);
+    doc.text(`PERSIANAS (Accesorios): ${totalPers} m²`, 14, finalY + 10);
+  }
 
   // Agregar croquis al PDF
   let posY = finalY + 25;
