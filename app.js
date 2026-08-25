@@ -373,7 +373,7 @@ function obtenerEstructuraProyecto() {
 
     // Obtener croquis si existe
     const croquisImg = amb.querySelector('.croquis-img');
-    const croquisData = (croquisImg && croquisImg.src && !croquisImg.src.endsWith('')) ? croquisImg.src : null;
+    const croquisData = (croquisImg && croquisImg.src && croquisImg.src.startsWith('data:')) ? croquisImg.src : null;
 
     ambientes.push({ nombre, superficie, acabado, desperdicio, mediciones, croquis: croquisData });
   });
@@ -613,7 +613,7 @@ function abrirCroquis(idAmbiente) {
   // Cargar croquis existente si hay
   const ambEl = document.getElementById(idAmbiente);
   const imgExistente = ambEl.querySelector('.croquis-img');
-  if (imgExistente && imgExistente.src && !imgExistente.src.endsWith('')) {
+  if (imgExistente && imgExistente.src && imgExistente.src.startsWith('data:')) {
     const img = new Image();
     img.onload = function () {
       croquisCtx.drawImage(img, 0, 0, croquisCanvas.width, croquisCanvas.height);
