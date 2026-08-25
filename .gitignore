@@ -1,0 +1,11 @@
+node_modules/
+src/
+tailwind.config.js
+package.json
+package-lock.json
+build_output.txt
+index-copia.html
+logo.png
+cinta.png
+appstore-images/
+appstore-images.zip

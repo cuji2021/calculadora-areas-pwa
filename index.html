@@ -1,0 +1,364 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Calculadora de Áreas - Obra</title>
+
+    <!-- Integración de PWA y Manifiesto -->
+    <link rel="manifest" href="manifest.json" />
+    <meta name="theme-color" content="#0f172a" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta
+      name="apple-mobile-web-app-status-bar-style"
+      content="black-translucent"
+    />
+    <meta name="apple-mobile-web-app-title" content="Áreas Obra" />
+    <link rel="apple-touch-icon" href="icon-192.png" />
+
+    <!-- Tailwind CSS (compilado) -->
+    <link rel="stylesheet" href="styles.min.css" />
+
+    <!-- jsPDF & AutoTable (local) -->
+    <script src="vendor/jspdf.umd.min.js"></script>
+    <script src="vendor/jspdf.plugin.autotable.min.js"></script>
+
+    <!-- Registro del Service Worker -->
+    <script>
+      if ("serviceWorker" in navigator) {
+        window.addEventListener("load", () => {
+          navigator.serviceWorker
+            .register("./sw.js")
+            .then((reg) =>
+              console.log("Service Worker registrado con éxito:", reg.scope),
+            )
+            .catch((err) =>
+              console.error("Error al registrar el Service Worker:", err),
+            );
+        });
+      }
+    </script>
+  </head>
+  <body
+    class="bg-slate-100 text-slate-800 font-sans p-4 max-w-md mx-auto min-h-screen pb-16 relative"
+  >
+    <!-- Datalist Globales -->
+    <datalist id="listaAmbientes"></datalist>
+    <datalist id="listaAcabados"></datalist>
+    <datalist id="listaSuperficies"></datalist>
+
+    <!-- Encabezado -->
+    <header class="mb-4 space-y-3">
+      <div class="flex justify-between items-center">
+        <div>
+          <h1 class="text-lg font-bold text-slate-900">Medición de Áreas</h1>
+          <p class="text-[10px] text-slate-500">Toma de medidas en campo</p>
+        </div>
+        <div class="flex gap-1.5">
+          <button
+            onclick="nuevaMedicion()"
+            class="px-2.5 py-1.5 bg-emerald-600 text-white text-xs font-bold rounded-lg hover:bg-emerald-500 shadow active:scale-95 transition"
+          >
+            ✨ Nueva
+          </button>
+          <button
+            onclick="abrirHistorial()"
+            class="px-2.5 py-1.5 bg-blue-100 text-blue-700 text-xs font-bold rounded-lg hover:bg-blue-200 shadow active:scale-95 transition"
+          >
+            📁 Historial
+          </button>
+          <button
+            onclick="salirApp()"
+            class="px-2.5 py-1.5 bg-red-100 text-red-700 text-xs font-bold rounded-lg hover:bg-red-200 shadow active:scale-95 transition"
+          >
+            ✕ Salir
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Datos del Cliente -->
+    <section
+      class="bg-white p-4 rounded-xl shadow-sm mb-4 space-y-3 border border-slate-200"
+    >
+      <h2 class="text-sm font-semibold text-slate-700">Datos del Proyecto</h2>
+      <input
+        type="text"
+        id="clienteNombre"
+        placeholder="Nombre del Cliente / Proyecto"
+        class="w-full text-sm p-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+      />
+      <input
+        type="text"
+        id="direccionProyecto"
+        placeholder="Dirección / Ubicación"
+        class="w-full text-sm p-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+      />
+    </section>
+
+    <!-- Contenedor de Ambientes -->
+    <div id="ambientesContainer" class="space-y-4"></div>
+
+    <!-- Botón Añadir Ambiente -->
+    <button
+      onclick="agregarAmbiente()"
+      class="w-full mt-4 py-3 bg-slate-800 text-white font-medium text-sm rounded-xl shadow hover:bg-slate-700 active:scale-95 transition"
+    >
+      + Agregar Nuevo Ambiente
+    </button>
+
+    <!-- Resumen Final -->
+    <section
+      class="bg-blue-900 text-white p-4 rounded-xl shadow-md mt-6 space-y-3"
+    >
+      <h2 class="text-xs uppercase tracking-wide text-blue-200 font-semibold">
+        Resumen Total de Material
+      </h2>
+      <div class="flex justify-between items-baseline">
+        <span class="text-sm">Área Total Requerida:</span>
+        <span class="text-2xl font-black"
+          ><span id="granTotal">0.00 m²</span></span
+        >
+      </div>
+
+      <button
+        onclick="guardarProyecto()"
+        class="w-full py-2.5 bg-blue-600 text-white font-bold text-xs rounded-lg shadow hover:bg-blue-500 active:scale-95 transition"
+      >
+        💾 Guardar Medición
+      </button>
+
+      <div class="grid grid-cols-2 gap-2 pt-1">
+        <button
+          onclick="generarPDF(false)"
+          class="py-2.5 bg-slate-700 text-white font-bold text-xs rounded-lg shadow hover:bg-slate-600 active:scale-95 transition"
+        >
+          ⬇️ Descargar PDF
+        </button>
+        <button
+          onclick="generarPDF(true)"
+          class="py-2.5 bg-emerald-500 text-white font-bold text-xs rounded-lg shadow hover:bg-emerald-600 active:scale-95 transition"
+        >
+          📲 Enviar WhatsApp
+        </button>
+      </div>
+    </section>
+
+    <!-- Modal Teclado Numérico Gigante -->
+    <div
+      id="keypadModal"
+      class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden z-50 flex items-end justify-center p-2"
+    >
+      <div
+        class="bg-slate-800 w-full max-w-md rounded-2xl p-4 shadow-2xl space-y-3 text-white"
+      >
+        <div
+          class="flex justify-between items-center border-b border-slate-700 pb-2"
+        >
+          <span
+            id="keypadTitle"
+            class="text-xs text-slate-400 font-bold uppercase"
+            >Ingresar Medida (m)</span
+          >
+          <button
+            onclick="cerrarTeclado()"
+            class="text-slate-400 text-lg font-bold"
+          >
+            ✕
+          </button>
+        </div>
+
+        <div
+          id="keypadDisplay"
+          class="bg-slate-900 text-right text-3xl font-mono font-bold p-3 rounded-xl text-emerald-400 border border-slate-700 min-h-[56px] flex items-center justify-end"
+        >
+          0
+        </div>
+
+        <div class="grid grid-cols-3 gap-2 text-xl font-bold">
+          <button
+            onclick="pressKey('7')"
+            class="py-3 bg-slate-700 rounded-xl active:bg-slate-600"
+          >
+            7
+          </button>
+          <button
+            onclick="pressKey('8')"
+            class="py-3 bg-slate-700 rounded-xl active:bg-slate-600"
+          >
+            8
+          </button>
+          <button
+            onclick="pressKey('9')"
+            class="py-3 bg-slate-700 rounded-xl active:bg-slate-600"
+          >
+            9
+          </button>
+          <button
+            onclick="pressKey('4')"
+            class="py-3 bg-slate-700 rounded-xl active:bg-slate-600"
+          >
+            4
+          </button>
+          <button
+            onclick="pressKey('5')"
+            class="py-3 bg-slate-700 rounded-xl active:bg-slate-600"
+          >
+            5
+          </button>
+          <button
+            onclick="pressKey('6')"
+            class="py-3 bg-slate-700 rounded-xl active:bg-slate-600"
+          >
+            6
+          </button>
+          <button
+            onclick="pressKey('1')"
+            class="py-3 bg-slate-700 rounded-xl active:bg-slate-600"
+          >
+            1
+          </button>
+          <button
+            onclick="pressKey('2')"
+            class="py-3 bg-slate-700 rounded-xl active:bg-slate-600"
+          >
+            2
+          </button>
+          <button
+            onclick="pressKey('3')"
+            class="py-3 bg-slate-700 rounded-xl active:bg-slate-600"
+          >
+            3
+          </button>
+          <button
+            onclick="pressKey('.')"
+            class="py-3 bg-slate-700 rounded-xl active:bg-slate-600"
+          >
+            .
+          </button>
+          <button
+            onclick="pressKey('0')"
+            class="py-3 bg-slate-700 rounded-xl active:bg-slate-600"
+          >
+            0
+          </button>
+          <button
+            onclick="pressKey('DEL')"
+            class="py-3 bg-amber-600 text-white rounded-xl active:bg-amber-500 flex items-center justify-center"
+          >
+            ⌫
+          </button>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2 pt-1">
+          <button
+            onclick="pressKey('CLR')"
+            class="py-2.5 bg-slate-600 text-xs font-bold rounded-xl active:bg-slate-500"
+          >
+            Limpiar
+          </button>
+          <button
+            onclick="cerrarTeclado()"
+            class="py-2.5 bg-emerald-600 text-xs font-bold rounded-xl active:bg-emerald-500"
+          >
+            Aceptar ✓
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal Aviso -->
+    <div
+      id="modalAviso"
+      class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden z-50 p-4 flex items-center justify-center"
+    >
+      <div
+        class="bg-white w-full max-w-xs rounded-2xl p-5 shadow-2xl text-center space-y-4"
+      >
+        <div
+          id="avisoIcono"
+          class="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto text-xl font-bold"
+        >
+          ✓
+        </div>
+        <div>
+          <h3 id="avisoTitulo" class="font-bold text-slate-900 text-base">
+            ¡Operación exitosa!
+          </h3>
+          <p id="avisoMensaje" class="text-xs text-slate-500 mt-1">
+            La medición se guardó correctamente.
+          </p>
+        </div>
+        <button
+          onclick="cerrarAviso()"
+          class="w-full py-2 bg-emerald-600 text-white font-bold text-xs rounded-xl shadow hover:bg-emerald-500 active:scale-95 transition"
+        >
+          Aceptar
+        </button>
+      </div>
+    </div>
+
+    <!-- Modal Historial -->
+    <div
+      id="modalHistorial"
+      class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden z-50 p-4 flex items-center justify-center"
+    >
+      <div
+        class="bg-white w-full max-w-md rounded-2xl p-4 shadow-xl max-h-[80vh] flex flex-col"
+      >
+        <div class="flex justify-between items-center border-b pb-2 mb-3">
+          <h3 class="font-bold text-slate-800 text-sm">Mediciones Guardadas</h3>
+          <button
+            onclick="cerrarHistorial()"
+            class="text-slate-400 text-lg font-bold"
+          >
+            ✕
+          </button>
+        </div>
+        <div
+          id="listaHistorial"
+          class="overflow-y-auto space-y-2 flex-1 pr-1"
+        ></div>
+      </div>
+    </div>
+
+    <!-- Modal Salir -->
+    <div
+      id="modalSalir"
+      class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden z-50 p-4 flex items-center justify-center"
+    >
+      <div
+        class="bg-white w-full max-w-xs rounded-2xl p-5 shadow-2xl text-center space-y-4"
+      >
+        <div
+          class="w-12 h-12 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto text-xl font-bold"
+        >
+          ✕
+        </div>
+        <div>
+          <h3 class="font-bold text-slate-900 text-base">¿Salir de la app?</h3>
+          <p class="text-xs text-slate-500 mt-1">
+            Los datos guardados se mantendrán para tu próxima visita.
+          </p>
+        </div>
+        <div class="grid grid-cols-2 gap-2 pt-1">
+          <button
+            onclick="cancelarSalir()"
+            class="py-2.5 bg-slate-100 text-slate-700 font-bold text-xs rounded-xl hover:bg-slate-200 active:scale-95 transition"
+          >
+            Cancelar
+          </button>
+          <button
+            onclick="confirmarSalir()"
+            class="py-2.5 bg-red-600 text-white font-bold text-xs rounded-xl shadow hover:bg-red-500 active:scale-95 transition"
+          >
+            Salir
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- App principal -->
+    <script src="app.js"></script>
+  </body>
+</html>
