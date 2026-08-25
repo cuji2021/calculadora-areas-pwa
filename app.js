@@ -5,7 +5,18 @@ let inputActivo = null;
 document.addEventListener('DOMContentLoaded', () => {
   cargarCatalogos();
   agregarAmbiente();
+  solicitarPersistencia();
 });
+
+// Solicitar almacenamiento persistente para proteger datos del cliente
+async function solicitarPersistencia() {
+  if (navigator.storage && navigator.storage.persist) {
+    const granted = await navigator.storage.persist();
+    if (granted) {
+      console.log('Almacenamiento persistente concedido');
+    }
+  }
+}
 
 // --- SALIR ---
 function salirApp() {
