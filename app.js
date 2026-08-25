@@ -475,6 +475,18 @@ function eliminarProyecto(id) {
 
 // --- GENERACIÓN DE PDF ---
 async function generarPDF(compartir = false) {
+  // Esperar a que todas las imágenes de croquis estén cargadas
+  const promesasImg = [];
+  document.querySelectorAll('.croquis-img').forEach(img => {
+    if (img.src && img.src.startsWith('data:image') && !img.complete) {
+      promesasImg.push(new Promise(resolve => {
+        img.onload = resolve;
+        img.onerror = resolve;
+      }));
+    }
+  });
+  if (promesasImg.length > 0) await Promise.all(promesasImg);
+
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF();
   const cliente = document.getElementById('clienteNombre').value || 'Cliente General';
@@ -552,10 +564,10 @@ async function generarPDF(compartir = false) {
   let posY = finalY + 25;
   document.querySelectorAll('.ambiente-card').forEach((amb, idx) => {
     const croquisImg = amb.querySelector('.croquis-img');
-    const preview = amb.querySelector('.croquis-preview');
-    const tieneCroquis = croquisImg && croquisImg.src && croquisImg.src.startsWith('data:image') && !preview.classList.contains('hidden');
+    if (!croquisImg) return;
+    const src = croquisImg.getAttribute('src') || croquisImg.src || '';
     
-    if (tieneCroquis) {
+    if (src.startsWith('data:image')) {
       const nombreAmb = amb.querySelector('.ambiente-nombre').value || `Ambiente ${idx + 1}`;
       
       if (posY > 220) {
@@ -569,8 +581,8 @@ async function generarPDF(compartir = false) {
       doc.text(`Croquis: ${nombreAmb}`, 14, posY);
       posY += 5;
       try {
-        const formato = croquisImg.src.startsWith('data:image/jpeg') ? 'JPEG' : 'PNG';
-        doc.addImage(croquisImg.src, formato, 14, posY, 90, 67);
+        const formato = src.startsWith('data:image/jpeg') ? 'JPEG' : 'PNG';
+        doc.addImage(src, formato, 14, posY, 90, 67);
       } catch (e) {
         console.warn('Error al agregar croquis al PDF:', e);
       }
