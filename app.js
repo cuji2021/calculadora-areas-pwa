@@ -586,20 +586,25 @@ let croquisCanvas = null;
 let croquisCtx = null;
 let dibujando = false;
 let croquisHistorial = [];
+let modoTexto = false;
 
 function abrirCroquis(idAmbiente) {
   croquisAmbienteActual = idAmbiente;
   croquisHistorial = [];
+  modoTexto = false;
   const modal = document.getElementById('modalCroquis');
   modal.classList.remove('hidden');
 
   croquisCanvas = document.getElementById('canvasCroquis');
   croquisCtx = croquisCanvas.getContext('2d');
 
-  // Ajustar tamaño del canvas al contenedor
+  // Canvas más grande que el contenedor (scrollable)
   const contenedor = croquisCanvas.parentElement;
-  croquisCanvas.width = contenedor.offsetWidth;
-  croquisCanvas.height = Math.min(contenedor.offsetWidth * 0.75, 350);
+  const ancho = contenedor.offsetWidth - 10;
+  croquisCanvas.width = ancho;
+  croquisCanvas.height = ancho * 1.2; // Más alto para permitir scroll
+  croquisCanvas.style.width = ancho + 'px';
+  croquisCanvas.style.height = (ancho * 1.2) + 'px';
 
   // Fondo blanco
   croquisCtx.fillStyle = '#ffffff';
@@ -712,6 +717,17 @@ function obtenerPosicion(e) {
 }
 
 function iniciarTrazo(e) {
+  if (modoTexto) {
+    const pos = obtenerPosicion(e);
+    const texto = prompt('Escribe el texto:');
+    if (texto && texto.trim()) {
+      croquisCtx.font = `bold ${Math.max(croquisCtx.lineWidth * 4, 14)}px Arial`;
+      croquisCtx.fillStyle = croquisCtx.strokeStyle;
+      croquisCtx.fillText(texto.trim(), pos.x, pos.y);
+      guardarEstadoCroquis();
+    }
+    return;
+  }
   dibujando = true;
   const pos = obtenerPosicion(e);
   croquisCtx.beginPath();
@@ -744,4 +760,19 @@ function dibujarTrazoTouch(e) {
   const touch = e.touches[0];
   const mouseEvent = new MouseEvent('mousemove', { clientX: touch.clientX, clientY: touch.clientY });
   dibujarTrazo(mouseEvent);
+}
+
+// --- MODO TEXTO ---
+function toggleModoTexto() {
+  modoTexto = !modoTexto;
+  const btn = document.getElementById('btnModoTexto');
+  if (modoTexto) {
+    btn.classList.remove('bg-purple-100', 'text-purple-700');
+    btn.classList.add('bg-purple-600', 'text-white');
+    croquisCanvas.style.cursor = 'text';
+  } else {
+    btn.classList.remove('bg-purple-600', 'text-white');
+    btn.classList.add('bg-purple-100', 'text-purple-700');
+    croquisCanvas.style.cursor = 'crosshair';
+  }
 }
