@@ -15,9 +15,6 @@ function salirApp() {
 function confirmarSalir() {
   document.getElementById('modalSalir').classList.add('hidden');
   window.close();
-  setTimeout(() => {
-    mostrarNotificacion('Salir', 'Para cerrar la app, ciérrala desde el menú del navegador o el sistema.', '⚠️', 'bg-amber-100', 'text-amber-700');
-  }, 300);
 }
 
 function cancelarSalir() {
