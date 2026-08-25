@@ -174,7 +174,7 @@ function agregarAmbiente(datos = null) {
   const nombreInicial = datos ? datos.nombre : '';
   const superficieInicial = datos ? datos.superficie : '';
   const acabadoInicial = datos ? datos.acabado : '';
-  const desperdicioInicial = datos ? datos.desperdicio : '10';
+  const desperdicioInicial = datos ? datos.desperdicio : '0';
 
   const ambienteHTML = `
     <div id="${idAmbiente}" class="ambiente-card bg-white p-4 rounded-xl shadow-sm border border-slate-200 space-y-3">
