@@ -782,9 +782,27 @@ function toggleModoTexto() {
 function confirmarTexto() {
   const texto = document.getElementById('inputTextoCroquis').value.trim();
   if (texto && croquisCtx) {
-    croquisCtx.font = `bold ${Math.max(croquisCtx.lineWidth * 4, 14)}px Arial`;
+    const fontSize = Math.max(croquisCtx.lineWidth * 4, 14);
+    croquisCtx.font = `bold ${fontSize}px Arial`;
     croquisCtx.fillStyle = croquisCtx.strokeStyle;
-    croquisCtx.fillText(texto, textoPosX, textoPosY);
+    
+    // Ajustar posición si el texto se sale del canvas
+    const medida = croquisCtx.measureText(texto);
+    let x = textoPosX;
+    let y = textoPosY;
+    
+    // Si se sale por la derecha, mover a la izquierda
+    if (x + medida.width > croquisCanvas.width) {
+      x = croquisCanvas.width - medida.width - 5;
+    }
+    // Si se sale por la izquierda
+    if (x < 5) x = 5;
+    // Si se sale por arriba
+    if (y < fontSize) y = fontSize + 5;
+    // Si se sale por abajo
+    if (y > croquisCanvas.height - 5) y = croquisCanvas.height - 5;
+    
+    croquisCtx.fillText(texto, x, y);
     guardarEstadoCroquis();
   }
   document.getElementById('modalTexto').classList.add('hidden');
