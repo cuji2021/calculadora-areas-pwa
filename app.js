@@ -66,6 +66,8 @@ function obtenerAmbientesGuardados() {
 
 function registrarNuevoAmbiente(nombre) {
   if (!nombre || !nombre.trim()) return;
+  // No guardar nombres genéricos como "Ambiente 1", "Ambiente 2", etc.
+  if (/^Ambiente\s+\d+$/i.test(nombre.trim())) return;
   const ambientes = JSON.parse(localStorage.getItem('catalogoAmbientes') || '[]');
   if (!ambientes.includes(nombre.trim())) {
     ambientes.push(nombre.trim());
@@ -125,6 +127,10 @@ function mostrarNotificacion(titulo, mensaje, icono = '✓', colorBg = 'bg-emera
 function cerrarAviso() { document.getElementById('modalAviso').classList.add('hidden'); }
 
 function nuevaMedicion() {
+  // Guardar nombres de ambientes actuales antes de limpiar
+  document.querySelectorAll('.ambiente-nombre').forEach(input => {
+    if (input.value) registrarNuevoAmbiente(input.value);
+  });
   proyectoActualId = null;
   contadorAmbientes = 0;
   document.getElementById('clienteNombre').value = '';
@@ -147,7 +153,7 @@ function agregarAmbiente(datos = null) {
   const ambienteHTML = `
     <div id="${idAmbiente}" class="ambiente-card bg-white p-4 rounded-xl shadow-sm border border-slate-200 space-y-3">
       <div class="flex justify-between items-center border-b pb-2">
-        <input type="text" list="listaAmbientes" placeholder="Ej: Baño, Piscina" class="ambiente-nombre font-semibold text-sm text-slate-800 focus:outline-none focus:border-b focus:border-blue-500 w-2/3" value="${nombreInicial}" onchange="registrarNuevoAmbiente(this.value)">
+        <input type="text" list="listaAmbientes" placeholder="Ej: Baño, Piscina" class="ambiente-nombre font-semibold text-sm text-slate-800 focus:outline-none focus:border-b focus:border-blue-500 w-2/3" value="${nombreInicial}" onchange="registrarNuevoAmbiente(this.value)" onblur="registrarNuevoAmbiente(this.value)">
         <button onclick="eliminarElemento('${idAmbiente}')" class="text-red-500 text-xs font-bold px-2 py-1 bg-red-50 rounded">Eliminar</button>
       </div>
 
