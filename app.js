@@ -127,9 +127,15 @@ function mostrarNotificacion(titulo, mensaje, icono = '✓', colorBg = 'bg-emera
 function cerrarAviso() { document.getElementById('modalAviso').classList.add('hidden'); }
 
 function nuevaMedicion() {
-  // Guardar nombres de ambientes actuales antes de limpiar
+  // Guardar catálogos actuales antes de limpiar
   document.querySelectorAll('.ambiente-nombre').forEach(input => {
     if (input.value) registrarNuevoAmbiente(input.value);
+  });
+  document.querySelectorAll('.superficie-val').forEach(input => {
+    if (input.value) registrarNuevaSuperficie(input.value);
+  });
+  document.querySelectorAll('.acabado-val').forEach(input => {
+    if (input.value) registrarNuevoAcabado(input.value);
   });
   proyectoActualId = null;
   contadorAmbientes = 0;
@@ -160,11 +166,11 @@ function agregarAmbiente(datos = null) {
       <div class="grid grid-cols-2 gap-2 bg-slate-50 p-2 rounded-lg border border-slate-200 text-xs">
         <div>
           <label class="block text-[10px] font-bold text-slate-500 mb-0.5">SUPERFICIE / TIPO</label>
-          <input type="text" list="listaSuperficies" placeholder="Piso, Pared..." class="superficie-val w-full bg-white border border-slate-300 rounded px-2 py-1 font-medium focus:outline-none focus:ring-1 focus:ring-blue-500" value="${superficieInicial}" onchange="registrarNuevaSuperficie(this.value)">
+          <input type="text" list="listaSuperficies" placeholder="Piso, Pared..." class="superficie-val w-full bg-white border border-slate-300 rounded px-2 py-1 font-medium focus:outline-none focus:ring-1 focus:ring-blue-500" value="${superficieInicial}" onchange="registrarNuevaSuperficie(this.value)" onblur="registrarNuevaSuperficie(this.value)">
         </div>
         <div>
           <label class="block text-[10px] font-bold text-slate-500 mb-0.5">ACABADO / FORMATO</label>
-          <input type="text" list="listaAcabados" placeholder="Porcelanato..." class="acabado-val w-full bg-white border border-slate-300 rounded px-2 py-1 font-medium focus:outline-none focus:ring-1 focus:ring-blue-500" value="${acabadoInicial}" onchange="registrarNuevoAcabado(this.value)">
+          <input type="text" list="listaAcabados" placeholder="Porcelanato..." class="acabado-val w-full bg-white border border-slate-300 rounded px-2 py-1 font-medium focus:outline-none focus:ring-1 focus:ring-blue-500" value="${acabadoInicial}" onchange="registrarNuevoAcabado(this.value)" onblur="registrarNuevoAcabado(this.value)">
         </div>
       </div>
 
