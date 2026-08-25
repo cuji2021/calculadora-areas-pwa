@@ -140,6 +140,7 @@ function nuevaMedicion() {
   document.getElementById('direccionProyecto').value = '';
   document.getElementById('ambientesContainer').innerHTML = '';
   agregarAmbiente();
+  cargarCatalogos();
   calcularTotales();
   mostrarNotificacion('Nueva Medición', 'Formulario limpiado para un nuevo proyecto.', '✨', 'bg-blue-100', 'text-blue-600');
 }
@@ -148,8 +149,8 @@ function nuevaMedicion() {
 function agregarAmbiente(datos = null) {
   contadorAmbientes++;
   const idAmbiente = `ambiente-${contadorAmbientes}`;
-  const nombreInicial = datos ? datos.nombre : `Ambiente ${contadorAmbientes}`;
-  const superficieInicial = datos ? datos.superficie : 'Piso';
+  const nombreInicial = datos ? datos.nombre : '';
+  const superficieInicial = datos ? datos.superficie : '';
   const acabadoInicial = datos ? datos.acabado : '';
   const desperdicioInicial = datos ? datos.desperdicio : '10';
 
