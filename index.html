@@ -322,6 +322,53 @@
       </div>
     </div>
 
+    <!-- Modal Croquis -->
+    <div
+      id="modalCroquis"
+      class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm hidden z-50 p-3 flex items-center justify-center"
+    >
+      <div
+        class="bg-white w-full max-w-md rounded-2xl shadow-2xl flex flex-col max-h-[95vh]"
+      >
+        <div class="flex justify-between items-center p-3 border-b">
+          <h3 class="font-bold text-slate-800 text-sm">✏️ Croquis del Ambiente</h3>
+          <button onclick="cerrarCroquis()" class="text-slate-400 text-lg font-bold">✕</button>
+        </div>
+
+        <div class="p-3 flex-1">
+          <canvas
+            id="canvasCroquis"
+            class="w-full border-2 border-slate-200 rounded-xl touch-none cursor-crosshair"
+          ></canvas>
+        </div>
+
+        <div class="px-3 pb-2 space-y-2">
+          <div class="flex items-center gap-2 justify-between">
+            <div class="flex gap-1">
+              <span class="text-[10px] text-slate-500 font-bold self-center mr-1">COLOR:</span>
+              <button onclick="cambiarColorCroquis('#1e293b')" class="color-btn w-6 h-6 rounded-full bg-slate-800 ring-2 ring-offset-1"></button>
+              <button onclick="cambiarColorCroquis('#dc2626')" class="color-btn w-6 h-6 rounded-full bg-red-600"></button>
+              <button onclick="cambiarColorCroquis('#2563eb')" class="color-btn w-6 h-6 rounded-full bg-blue-600"></button>
+              <button onclick="cambiarColorCroquis('#16a34a')" class="color-btn w-6 h-6 rounded-full bg-green-600"></button>
+            </div>
+            <div class="flex gap-1">
+              <span class="text-[10px] text-slate-500 font-bold self-center mr-1">TRAZO:</span>
+              <button onclick="cambiarGrosorCroquis(2)" class="grosor-btn px-2 py-1 bg-slate-100 rounded text-[10px] font-bold">Fino</button>
+              <button onclick="cambiarGrosorCroquis(4)" class="grosor-btn px-2 py-1 bg-slate-100 rounded text-[10px] font-bold ring-2 ring-blue-500">Medio</button>
+              <button onclick="cambiarGrosorCroquis(7)" class="grosor-btn px-2 py-1 bg-slate-100 rounded text-[10px] font-bold">Grueso</button>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-4 gap-2">
+            <button onclick="deshacerCroquis()" class="py-2 bg-slate-100 text-slate-700 text-xs font-bold rounded-lg active:scale-95">↩ Deshacer</button>
+            <button onclick="limpiarCroquis()" class="py-2 bg-amber-100 text-amber-700 text-xs font-bold rounded-lg active:scale-95">🗑 Limpiar</button>
+            <button onclick="cerrarCroquis()" class="py-2 bg-slate-100 text-slate-700 text-xs font-bold rounded-lg active:scale-95">Cancelar</button>
+            <button onclick="guardarCroquis()" class="py-2 bg-emerald-600 text-white text-xs font-bold rounded-lg active:scale-95">✓ Guardar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Modal Salir -->
     <div
       id="modalSalir"

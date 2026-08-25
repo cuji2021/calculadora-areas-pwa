@@ -177,6 +177,11 @@ function agregarAmbiente(datos = null) {
       <div class="flex gap-2 pt-1">
         <button onclick="agregarMedicion('${idAmbiente}', 'suma')" class="flex-1 py-1.5 bg-blue-50 text-blue-600 text-xs font-semibold rounded-lg hover:bg-blue-100">+ Tramo</button>
         <button onclick="agregarMedicion('${idAmbiente}', 'resta')" class="flex-1 py-1.5 bg-amber-50 text-amber-700 text-xs font-semibold rounded-lg hover:bg-amber-100">- Vano</button>
+        <button onclick="abrirCroquis('${idAmbiente}')" class="flex-1 py-1.5 bg-slate-100 text-slate-700 text-xs font-semibold rounded-lg hover:bg-slate-200">✏️ Croquis</button>
+      </div>
+
+      <div class="croquis-preview hidden">
+        <img class="croquis-img w-full rounded-lg border border-slate-200 mt-2" src="" alt="Croquis">
       </div>
 
       <div class="flex justify-between items-center pt-2 border-t text-xs">
@@ -201,6 +206,15 @@ function agregarAmbiente(datos = null) {
     datos.mediciones.forEach(m => agregarMedicion(idAmbiente, m.tipo, m.largo, m.ancho, m.unidad || 'm2'));
   } else {
     agregarMedicion(idAmbiente, 'suma');
+  }
+
+  // Restaurar croquis si existe
+  if (datos && datos.croquis) {
+    const ambEl = document.getElementById(idAmbiente);
+    const preview = ambEl.querySelector('.croquis-preview');
+    const img = ambEl.querySelector('.croquis-img');
+    img.src = datos.croquis;
+    preview.classList.remove('hidden');
   }
 }
 
@@ -357,7 +371,11 @@ function obtenerEstructuraProyecto() {
       });
     });
 
-    ambientes.push({ nombre, superficie, acabado, desperdicio, mediciones });
+    // Obtener croquis si existe
+    const croquisImg = amb.querySelector('.croquis-img');
+    const croquisData = (croquisImg && croquisImg.src && !croquisImg.src.endsWith('')) ? croquisImg.src : null;
+
+    ambientes.push({ nombre, superficie, acabado, desperdicio, mediciones, croquis: croquisData });
   });
 
   return {
@@ -503,6 +521,28 @@ async function generarPDF(compartir = false) {
   doc.setTextColor(30, 58, 138);
   doc.text(`TOTAL: ${totalGeneral}`, 104, finalY + 10);
 
+  // Agregar croquis al PDF
+  let posY = finalY + 25;
+  document.querySelectorAll('.ambiente-card').forEach((amb, idx) => {
+    const croquisImg = amb.querySelector('.croquis-img');
+    if (croquisImg && croquisImg.src && croquisImg.src.startsWith('data:')) {
+      const nombreAmb = amb.querySelector('.ambiente-nombre').value || `Ambiente ${idx + 1}`;
+      
+      if (posY > 220) {
+        doc.addPage();
+        posY = 20;
+      }
+      
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(51, 65, 85);
+      doc.text(`Croquis: ${nombreAmb}`, 14, posY);
+      posY += 5;
+      doc.addImage(croquisImg.src, 'PNG', 14, posY, 90, 67);
+      posY += 75;
+    }
+  });
+
   const nombreArchivo = `Medicion_${cliente.replace(/\s+/g, '_')}.pdf`;
 
   if (compartir) {
@@ -528,4 +568,170 @@ async function generarPDF(compartir = false) {
   } else {
     doc.save(nombreArchivo);
   }
+}
+
+// --- CROQUIS (DIBUJO A MANO ALZADA) ---
+let croquisAmbienteActual = null;
+let croquisCanvas = null;
+let croquisCtx = null;
+let dibujando = false;
+let croquisHistorial = [];
+
+function abrirCroquis(idAmbiente) {
+  croquisAmbienteActual = idAmbiente;
+  croquisHistorial = [];
+  const modal = document.getElementById('modalCroquis');
+  modal.classList.remove('hidden');
+
+  croquisCanvas = document.getElementById('canvasCroquis');
+  croquisCtx = croquisCanvas.getContext('2d');
+
+  // Ajustar tamaño del canvas al contenedor
+  const contenedor = croquisCanvas.parentElement;
+  croquisCanvas.width = contenedor.offsetWidth;
+  croquisCanvas.height = Math.min(contenedor.offsetWidth * 0.75, 350);
+
+  // Fondo blanco
+  croquisCtx.fillStyle = '#ffffff';
+  croquisCtx.fillRect(0, 0, croquisCanvas.width, croquisCanvas.height);
+
+  // Cargar croquis existente si hay
+  const ambEl = document.getElementById(idAmbiente);
+  const imgExistente = ambEl.querySelector('.croquis-img');
+  if (imgExistente && imgExistente.src && !imgExistente.src.endsWith('')) {
+    const img = new Image();
+    img.onload = function () {
+      croquisCtx.drawImage(img, 0, 0, croquisCanvas.width, croquisCanvas.height);
+      guardarEstadoCroquis();
+    };
+    img.src = imgExistente.src;
+  } else {
+    guardarEstadoCroquis();
+  }
+
+  // Configurar trazo
+  croquisCtx.strokeStyle = '#1e293b';
+  croquisCtx.lineWidth = 3;
+  croquisCtx.lineCap = 'round';
+  croquisCtx.lineJoin = 'round';
+
+  // Event listeners táctiles y mouse
+  croquisCanvas.addEventListener('mousedown', iniciarTrazo);
+  croquisCanvas.addEventListener('mousemove', dibujarTrazo);
+  croquisCanvas.addEventListener('mouseup', finalizarTrazo);
+  croquisCanvas.addEventListener('mouseleave', finalizarTrazo);
+  croquisCanvas.addEventListener('touchstart', iniciarTrazoTouch, { passive: false });
+  croquisCanvas.addEventListener('touchmove', dibujarTrazoTouch, { passive: false });
+  croquisCanvas.addEventListener('touchend', finalizarTrazo);
+}
+
+function cerrarCroquis() {
+  document.getElementById('modalCroquis').classList.add('hidden');
+  if (croquisCanvas) {
+    croquisCanvas.removeEventListener('mousedown', iniciarTrazo);
+    croquisCanvas.removeEventListener('mousemove', dibujarTrazo);
+    croquisCanvas.removeEventListener('mouseup', finalizarTrazo);
+    croquisCanvas.removeEventListener('mouseleave', finalizarTrazo);
+    croquisCanvas.removeEventListener('touchstart', iniciarTrazoTouch);
+    croquisCanvas.removeEventListener('touchmove', dibujarTrazoTouch);
+    croquisCanvas.removeEventListener('touchend', finalizarTrazo);
+  }
+  croquisAmbienteActual = null;
+}
+
+function guardarCroquis() {
+  if (!croquisCanvas || !croquisAmbienteActual) return;
+  const dataURL = croquisCanvas.toDataURL('image/png');
+  const ambEl = document.getElementById(croquisAmbienteActual);
+  const preview = ambEl.querySelector('.croquis-preview');
+  const img = ambEl.querySelector('.croquis-img');
+  img.src = dataURL;
+  preview.classList.remove('hidden');
+  cerrarCroquis();
+}
+
+function limpiarCroquis() {
+  if (!croquisCanvas || !croquisCtx) return;
+  croquisCtx.fillStyle = '#ffffff';
+  croquisCtx.fillRect(0, 0, croquisCanvas.width, croquisCanvas.height);
+  croquisHistorial = [];
+  guardarEstadoCroquis();
+}
+
+function deshacerCroquis() {
+  if (croquisHistorial.length > 1) {
+    croquisHistorial.pop();
+    const imgData = croquisHistorial[croquisHistorial.length - 1];
+    const img = new Image();
+    img.onload = function () {
+      croquisCtx.clearRect(0, 0, croquisCanvas.width, croquisCanvas.height);
+      croquisCtx.drawImage(img, 0, 0);
+    };
+    img.src = imgData;
+  } else {
+    limpiarCroquis();
+  }
+}
+
+function guardarEstadoCroquis() {
+  if (croquisCanvas) {
+    croquisHistorial.push(croquisCanvas.toDataURL());
+  }
+}
+
+function cambiarGrosorCroquis(grosor) {
+  if (croquisCtx) croquisCtx.lineWidth = grosor;
+  // Actualizar botones activos
+  document.querySelectorAll('.grosor-btn').forEach(btn => btn.classList.remove('ring-2', 'ring-blue-500'));
+  event.target.classList.add('ring-2', 'ring-blue-500');
+}
+
+function cambiarColorCroquis(color) {
+  if (croquisCtx) croquisCtx.strokeStyle = color;
+  document.querySelectorAll('.color-btn').forEach(btn => btn.classList.remove('ring-2', 'ring-offset-1'));
+  event.target.classList.add('ring-2', 'ring-offset-1');
+}
+
+// --- Eventos de dibujo ---
+function obtenerPosicion(e) {
+  const rect = croquisCanvas.getBoundingClientRect();
+  return {
+    x: e.clientX - rect.left,
+    y: e.clientY - rect.top
+  };
+}
+
+function iniciarTrazo(e) {
+  dibujando = true;
+  const pos = obtenerPosicion(e);
+  croquisCtx.beginPath();
+  croquisCtx.moveTo(pos.x, pos.y);
+}
+
+function dibujarTrazo(e) {
+  if (!dibujando) return;
+  const pos = obtenerPosicion(e);
+  croquisCtx.lineTo(pos.x, pos.y);
+  croquisCtx.stroke();
+}
+
+function finalizarTrazo() {
+  if (dibujando) {
+    dibujando = false;
+    guardarEstadoCroquis();
+  }
+}
+
+function iniciarTrazoTouch(e) {
+  e.preventDefault();
+  const touch = e.touches[0];
+  const mouseEvent = new MouseEvent('mousedown', { clientX: touch.clientX, clientY: touch.clientY });
+  iniciarTrazo(mouseEvent);
+}
+
+function dibujarTrazoTouch(e) {
+  e.preventDefault();
+  const touch = e.touches[0];
+  const mouseEvent = new MouseEvent('mousemove', { clientX: touch.clientX, clientY: touch.clientY });
+  dibujarTrazo(mouseEvent);
 }
