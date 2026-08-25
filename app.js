@@ -85,7 +85,7 @@ function registrarNuevoAmbiente(nombre) {
 }
 
 function obtenerSuperficiesGuardadas() {
-  const predeterminadas = ['Piso', 'Pared', 'Borde / Coronación', 'Zócalo / Rodapié', 'Techo / Cielo Raso', 'Fondo / Vaso'];
+  const predeterminadas = ['Piso', 'Pared', 'Persiana', 'Borde / Coronación', 'Zócalo / Rodapié', 'Techo / Cielo Raso', 'Fondo / Vaso'];
   const guardadas = JSON.parse(localStorage.getItem('catalogoSuperficies') || '[]');
   return [...new Set([...predeterminadas, ...guardadas])];
 }
@@ -157,6 +157,17 @@ function nuevaMedicion() {
 }
 
 // --- AMBIENTES Y MEDICIONES ---
+function verificarPersiana(idAmbiente) {
+  const ambEl = document.getElementById(idAmbiente);
+  const superficie = ambEl.querySelector('.superficie-val').value.toLowerCase().trim();
+  const attrs = ambEl.querySelector('.persiana-attrs');
+  if (superficie === 'persiana') {
+    attrs.classList.remove('hidden');
+  } else {
+    attrs.classList.add('hidden');
+  }
+}
+
 function agregarAmbiente(datos = null) {
   contadorAmbientes++;
   const idAmbiente = `ambiente-${contadorAmbientes}`;
@@ -175,11 +186,38 @@ function agregarAmbiente(datos = null) {
       <div class="grid grid-cols-2 gap-2 bg-slate-50 p-2 rounded-lg border border-slate-200 text-xs">
         <div>
           <label class="block text-[10px] font-bold text-slate-500 mb-0.5">SUPERFICIE / TIPO</label>
-          <input type="text" list="listaSuperficies" placeholder="Piso, Pared..." class="superficie-val w-full bg-white border border-slate-300 rounded px-2 py-1 font-medium focus:outline-none focus:ring-1 focus:ring-blue-500" value="${superficieInicial}" onchange="registrarNuevaSuperficie(this.value)" onblur="registrarNuevaSuperficie(this.value)">
+          <input type="text" list="listaSuperficies" placeholder="Piso, Pared..." class="superficie-val w-full bg-white border border-slate-300 rounded px-2 py-1 font-medium focus:outline-none focus:ring-1 focus:ring-blue-500" value="${superficieInicial}" onchange="registrarNuevaSuperficie(this.value); verificarPersiana('${idAmbiente}')" onblur="registrarNuevaSuperficie(this.value); verificarPersiana('${idAmbiente}')" oninput="verificarPersiana('${idAmbiente}')">
         </div>
         <div>
           <label class="block text-[10px] font-bold text-slate-500 mb-0.5">ACABADO / FORMATO</label>
           <input type="text" list="listaAcabados" placeholder="Porcelanato..." class="acabado-val w-full bg-white border border-slate-300 rounded px-2 py-1 font-medium focus:outline-none focus:ring-1 focus:ring-blue-500" value="${acabadoInicial}" onchange="registrarNuevoAcabado(this.value)" onblur="registrarNuevoAcabado(this.value)">
+        </div>
+      </div>
+
+      <div class="persiana-attrs hidden bg-purple-50 p-2 rounded-lg border border-purple-200 text-xs space-y-2">
+        <span class="text-[10px] font-bold text-purple-600 uppercase">Atributos Persiana</span>
+        <div class="grid grid-cols-3 gap-2">
+          <div>
+            <label class="block text-[10px] font-bold text-slate-500 mb-0.5">MANDO</label>
+            <select class="persiana-mando w-full bg-white border border-slate-300 rounded px-1 py-1 font-medium">
+              <option value="izquierdo" ${datos && datos.persiana && datos.persiana.mando === 'izquierdo' ? 'selected' : ''}>Izquierdo</option>
+              <option value="derecho" ${datos && datos.persiana && datos.persiana.mando === 'derecho' ? 'selected' : ''}>Derecho</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-[10px] font-bold text-slate-500 mb-0.5">CENEFA</label>
+            <select class="persiana-cenefa w-full bg-white border border-slate-300 rounded px-1 py-1 font-medium">
+              <option value="no" ${datos && datos.persiana && datos.persiana.cenefa === 'si' ? '' : 'selected'}>No</option>
+              <option value="si" ${datos && datos.persiana && datos.persiana.cenefa === 'si' ? 'selected' : ''}>Sí</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-[10px] font-bold text-slate-500 mb-0.5">MOTORIZADA</label>
+            <select class="persiana-motorizada w-full bg-white border border-slate-300 rounded px-1 py-1 font-medium">
+              <option value="no" ${datos && datos.persiana && datos.persiana.motorizada === 'si' ? '' : 'selected'}>No</option>
+              <option value="si" ${datos && datos.persiana && datos.persiana.motorizada === 'si' ? 'selected' : ''}>Sí</option>
+            </select>
+          </div>
         </div>
       </div>
 
@@ -227,6 +265,9 @@ function agregarAmbiente(datos = null) {
     img.src = datos.croquis;
     preview.classList.remove('hidden');
   }
+
+  // Mostrar atributos de persiana si corresponde
+  verificarPersiana(idAmbiente);
 }
 
 function agregarMedicion(idAmbiente, tipo, largo = '', ancho = '', unidad = '') {
@@ -386,7 +427,17 @@ function obtenerEstructuraProyecto() {
     const croquisImg = amb.querySelector('.croquis-img');
     const croquisData = (croquisImg && croquisImg.src && croquisImg.src.startsWith('data:image')) ? croquisImg.src : null;
 
-    ambientes.push({ nombre, superficie, acabado, desperdicio, mediciones, croquis: croquisData });
+    // Obtener datos de persiana si aplica
+    let persianaData = null;
+    if (superficie.toLowerCase() === 'persiana') {
+      persianaData = {
+        mando: amb.querySelector('.persiana-mando').value,
+        cenefa: amb.querySelector('.persiana-cenefa').value,
+        motorizada: amb.querySelector('.persiana-motorizada').value
+      };
+    }
+
+    ambientes.push({ nombre, superficie, acabado, desperdicio, mediciones, croquis: croquisData, persiana: persianaData });
   });
 
   return {
@@ -541,8 +592,16 @@ async function generarPDF(compartir = false) {
       }
     });
 
+    let descripcion = `${nombreAmbiente}\nElemento: ${superficie}\nAcabado: ${acabado}`;
+    if (superficie.toLowerCase() === 'persiana') {
+      const mando = amb.querySelector('.persiana-mando').value || 'izquierdo';
+      const cenefa = amb.querySelector('.persiana-cenefa').value || 'no';
+      const motorizada = amb.querySelector('.persiana-motorizada').value || 'no';
+      descripcion += `\nMando: ${mando} | Cenefa: ${cenefa} | Motor: ${motorizada}`;
+    }
+
     filas.push([
-      `${nombreAmbiente}\nElemento: ${superficie}\nAcabado: ${acabado}`,
+      descripcion,
       detalles.join(', '),
       `${desperdicio}%`,
       subtotal
