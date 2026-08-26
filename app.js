@@ -1431,6 +1431,7 @@ async function importarDatos(event) {
     const backup = JSON.parse(texto);
 
     if (!backup.historial) {
+      cerrarAlmacenamiento();
       mostrarNotificacion('Error', 'El archivo no es un backup válido.', '⚠️', 'bg-red-100', 'text-red-600');
       return;
     }
@@ -1456,9 +1457,10 @@ async function importarDatos(event) {
     }
 
     cargarCatalogos();
+    cerrarAlmacenamiento();
     mostrarNotificacion('Backup restaurado', `Se importaron ${backup.historial.length} proyecto(s) correctamente.`, '✓', 'bg-emerald-100', 'text-emerald-600');
-    await actualizarInfoAlmacenamiento();
   } catch (e) {
+    cerrarAlmacenamiento();
     mostrarNotificacion('Error', 'No se pudo leer el archivo de backup.', '⚠️', 'bg-red-100', 'text-red-600');
   }
 
