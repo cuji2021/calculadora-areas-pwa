@@ -98,8 +98,91 @@ function obtenerAcabadosGuardados() {
 
 function cargarCatalogos() {
   document.getElementById('listaAmbientes').innerHTML = obtenerAmbientesGuardados().map(a => `<option value="${a}">`).join('');
-  document.getElementById('listaSuperficies').innerHTML = obtenerSuperficiesGuardadas().map(s => `<option value="${s}">`).join('');
-  document.getElementById('listaAcabados').innerHTML = obtenerAcabadosGuardados().map(a => `<option value="${a}">`).join('');
+}
+
+function generarOpcionesSuperficies(seleccionada) {
+  const opciones = obtenerSuperficiesGuardadas();
+  let html = '<option value="">-- Seleccionar --</option>';
+  opciones.forEach(s => {
+    html += `<option value="${s}" ${s === seleccionada ? 'selected' : ''}>${s}</option>`;
+  });
+  html += '<option value="__otro__">+ Agregar nuevo...</option>';
+  return html;
+}
+
+function generarOpcionesAcabados(seleccionado) {
+  const opciones = obtenerAcabadosGuardados();
+  let html = '<option value="">-- Seleccionar --</option>';
+  opciones.forEach(a => {
+    html += `<option value="${a}" ${a === seleccionado ? 'selected' : ''}>${a}</option>`;
+  });
+  html += '<option value="__otro__">+ Agregar nuevo...</option>';
+  return html;
+}
+
+let selectActivo = null;
+let tipoModalCatalogo = null;
+
+function onCambioSuperficie(selectEl, idAmbiente) {
+  if (selectEl.value === '__otro__') {
+    selectActivo = selectEl;
+    tipoModalCatalogo = 'superficie';
+    document.getElementById('modalCatalogoTitulo').innerText = 'Nueva Superficie / Tipo';
+    document.getElementById('inputCatalogoNuevo').placeholder = 'Ej: Muro, Escalera, Fachada...';
+    document.getElementById('inputCatalogoNuevo').value = '';
+    document.getElementById('modalCatalogo').classList.remove('hidden');
+    setTimeout(() => document.getElementById('inputCatalogoNuevo').focus(), 100);
+  } else {
+    verificarPersiana(idAmbiente);
+  }
+}
+
+function onCambioAcabado(selectEl) {
+  if (selectEl.value === '__otro__') {
+    selectActivo = selectEl;
+    tipoModalCatalogo = 'acabado';
+    document.getElementById('modalCatalogoTitulo').innerText = 'Nuevo Acabado / Formato';
+    document.getElementById('inputCatalogoNuevo').placeholder = 'Ej: Mármol 80x80, Vinilo...';
+    document.getElementById('inputCatalogoNuevo').value = '';
+    document.getElementById('modalCatalogo').classList.remove('hidden');
+    setTimeout(() => document.getElementById('inputCatalogoNuevo').focus(), 100);
+  }
+}
+
+function confirmarCatalogo() {
+  const valor = document.getElementById('inputCatalogoNuevo').value.trim();
+  if (!valor) return;
+
+  if (tipoModalCatalogo === 'superficie') {
+    registrarNuevaSuperficie(valor);
+    // Actualizar todos los selects de superficie
+    document.querySelectorAll('.superficie-val').forEach(sel => {
+      const actual = sel.value === '__otro__' && sel === selectActivo ? valor : sel.value;
+      sel.innerHTML = generarOpcionesSuperficies(actual);
+    });
+    if (selectActivo) selectActivo.value = valor;
+    // Verificar persiana después de agregar
+    const ambCard = selectActivo.closest('.ambiente-card');
+    if (ambCard) verificarPersiana(ambCard.id);
+  } else {
+    registrarNuevoAcabado(valor);
+    document.querySelectorAll('.acabado-val').forEach(sel => {
+      const actual = sel.value === '__otro__' && sel === selectActivo ? valor : sel.value;
+      sel.innerHTML = generarOpcionesAcabados(actual);
+    });
+    if (selectActivo) selectActivo.value = valor;
+  }
+
+  document.getElementById('modalCatalogo').classList.add('hidden');
+  selectActivo = null;
+  tipoModalCatalogo = null;
+}
+
+function cancelarCatalogo() {
+  if (selectActivo) selectActivo.value = '';
+  document.getElementById('modalCatalogo').classList.add('hidden');
+  selectActivo = null;
+  tipoModalCatalogo = null;
 }
 
 function registrarNuevaSuperficie(nombre) {
@@ -140,10 +223,10 @@ function nuevaMedicion() {
     if (input.value) registrarNuevoAmbiente(input.value);
   });
   document.querySelectorAll('.superficie-val').forEach(input => {
-    if (input.value) registrarNuevaSuperficie(input.value);
+    if (input.value && input.value !== '__otro__') registrarNuevaSuperficie(input.value);
   });
   document.querySelectorAll('.acabado-val').forEach(input => {
-    if (input.value) registrarNuevoAcabado(input.value);
+    if (input.value && input.value !== '__otro__') registrarNuevoAcabado(input.value);
   });
   proyectoActualId = null;
   contadorAmbientes = 0;
@@ -186,11 +269,15 @@ function agregarAmbiente(datos = null) {
       <div class="grid grid-cols-2 gap-2 bg-slate-50 p-2 rounded-lg border border-slate-200 text-xs">
         <div>
           <label class="block text-[10px] font-bold text-slate-500 mb-0.5">SUPERFICIE / TIPO</label>
-          <input type="text" list="listaSuperficies" placeholder="Piso, Pared..." class="superficie-val w-full bg-white border border-slate-300 rounded px-2 py-1 font-medium focus:outline-none focus:ring-1 focus:ring-blue-500" value="${superficieInicial}" onchange="registrarNuevaSuperficie(this.value); verificarPersiana('${idAmbiente}')" onblur="registrarNuevaSuperficie(this.value); verificarPersiana('${idAmbiente}')" oninput="verificarPersiana('${idAmbiente}')">
+          <select class="superficie-val w-full bg-white border border-slate-300 rounded px-2 py-1 font-medium focus:outline-none focus:ring-1 focus:ring-blue-500" onchange="onCambioSuperficie(this, '${idAmbiente}')">
+            ${generarOpcionesSuperficies(superficieInicial)}
+          </select>
         </div>
         <div>
           <label class="block text-[10px] font-bold text-slate-500 mb-0.5">ACABADO / FORMATO</label>
-          <input type="text" list="listaAcabados" placeholder="Porcelanato..." class="acabado-val w-full bg-white border border-slate-300 rounded px-2 py-1 font-medium focus:outline-none focus:ring-1 focus:ring-blue-500" value="${acabadoInicial}" onchange="registrarNuevoAcabado(this.value)" onblur="registrarNuevoAcabado(this.value)">
+          <select class="acabado-val w-full bg-white border border-slate-300 rounded px-2 py-1 font-medium focus:outline-none focus:ring-1 focus:ring-blue-500" onchange="onCambioAcabado(this)">
+            ${generarOpcionesAcabados(acabadoInicial)}
+          </select>
         </div>
       </div>
 
