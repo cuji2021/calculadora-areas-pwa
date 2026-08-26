@@ -1341,3 +1341,151 @@ async function obtenerFotosParaPDF() {
     request.onerror = () => resolve([]);
   });
 }
+
+// --- ALMACENAMIENTO Y BACKUP ---
+async function abrirAlmacenamiento() {
+  document.getElementById('modalAlmacenamiento').classList.remove('hidden');
+  await actualizarInfoAlmacenamiento();
+}
+
+function cerrarAlmacenamiento() {
+  document.getElementById('modalAlmacenamiento').classList.add('hidden');
+}
+
+async function actualizarInfoAlmacenamiento() {
+  if (navigator.storage && navigator.storage.estimate) {
+    const est = await navigator.storage.estimate();
+    const usado = est.usage || 0;
+    const cuota = est.quota || 1;
+    const pct = Math.min((usado / cuota) * 100, 100);
+    const usadoMB = (usado / 1024 / 1024).toFixed(1);
+    const cuotaMB = (cuota / 1024 / 1024).toFixed(0);
+    document.getElementById('almacenamientoTexto').innerText = `${usadoMB} MB de ${cuotaMB} MB`;
+    document.getElementById('almacenamientoBarra').style.width = `${pct}%`;
+    
+    // Color según uso
+    const barra = document.getElementById('almacenamientoBarra');
+    barra.classList.remove('bg-blue-600', 'bg-amber-500', 'bg-red-600');
+    if (pct > 80) barra.classList.add('bg-red-600');
+    else if (pct > 50) barra.classList.add('bg-amber-500');
+    else barra.classList.add('bg-blue-600');
+
+    const historial = JSON.parse(localStorage.getItem('historialMediciones') || '[]');
+    document.getElementById('almacenamientoDetalle').innerText = `${historial.length} proyecto(s) guardado(s)`;
+  } else {
+    document.getElementById('almacenamientoTexto').innerText = 'No disponible';
+  }
+}
+
+async function exportarDatos() {
+  const historial = JSON.parse(localStorage.getItem('historialMediciones') || '[]');
+  const catalogos = {
+    superficies: JSON.parse(localStorage.getItem('catalogoSuperficies') || '[]'),
+    acabados: JSON.parse(localStorage.getItem('catalogoAcabados') || '[]'),
+    ambientes: JSON.parse(localStorage.getItem('catalogoAmbientes') || '[]')
+  };
+
+  // Obtener fotos de IndexedDB
+  let fotos = [];
+  if (dbFotos) {
+    const tx = dbFotos.transaction('fotos', 'readonly');
+    const store = tx.objectStore('fotos');
+    fotos = await new Promise(resolve => {
+      const req = store.getAll();
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => resolve([]);
+    });
+  }
+
+  const backup = { version: 1, fecha: new Date().toISOString(), historial, catalogos, fotos };
+  const blob = new Blob([JSON.stringify(backup)], { type: 'application/json' });
+  const file = new File([blob], `backup_mediciones_${new Date().toLocaleDateString('es-ES').replace(/\//g, '-')}.json`, { type: 'application/json' });
+
+  // Compartir si es posible, sino descargar
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    try {
+      await navigator.share({ files: [file], title: 'Backup Mediciones' });
+    } catch (e) {
+      if (e.name !== 'AbortError') descargarArchivo(file);
+    }
+  } else {
+    descargarArchivo(file);
+  }
+}
+
+function descargarArchivo(file) {
+  const url = URL.createObjectURL(file);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = file.name;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 3000);
+}
+
+async function importarDatos(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  try {
+    const texto = await file.text();
+    const backup = JSON.parse(texto);
+
+    if (!backup.historial) {
+      mostrarNotificacion('Error', 'El archivo no es un backup válido.', '⚠️', 'bg-red-100', 'text-red-600');
+      return;
+    }
+
+    // Restaurar localStorage
+    localStorage.setItem('historialMediciones', JSON.stringify(backup.historial));
+    if (backup.catalogos) {
+      if (backup.catalogos.superficies) localStorage.setItem('catalogoSuperficies', JSON.stringify(backup.catalogos.superficies));
+      if (backup.catalogos.acabados) localStorage.setItem('catalogoAcabados', JSON.stringify(backup.catalogos.acabados));
+      if (backup.catalogos.ambientes) localStorage.setItem('catalogoAmbientes', JSON.stringify(backup.catalogos.ambientes));
+    }
+
+    // Restaurar fotos en IndexedDB
+    if (backup.fotos && backup.fotos.length > 0 && dbFotos) {
+      const tx = dbFotos.transaction('fotos', 'readwrite');
+      const store = tx.objectStore('fotos');
+      // Limpiar fotos existentes
+      store.clear();
+      backup.fotos.forEach(f => {
+        const { id, ...resto } = f;
+        store.add(resto);
+      });
+    }
+
+    cargarCatalogos();
+    mostrarNotificacion('Backup restaurado', `Se importaron ${backup.historial.length} proyecto(s) correctamente.`, '✓', 'bg-emerald-100', 'text-emerald-600');
+    await actualizarInfoAlmacenamiento();
+  } catch (e) {
+    mostrarNotificacion('Error', 'No se pudo leer el archivo de backup.', '⚠️', 'bg-red-100', 'text-red-600');
+  }
+
+  event.target.value = '';
+}
+
+function confirmarLimpieza() {
+  document.getElementById('modalAlmacenamiento').classList.add('hidden');
+  document.getElementById('modalLimpieza').classList.remove('hidden');
+}
+
+async function ejecutarLimpieza() {
+  localStorage.removeItem('historialMediciones');
+  localStorage.removeItem('catalogoSuperficies');
+  localStorage.removeItem('catalogoAcabados');
+  localStorage.removeItem('catalogoAmbientes');
+
+  if (dbFotos) {
+    const tx = dbFotos.transaction('fotos', 'readwrite');
+    tx.objectStore('fotos').clear();
+  }
+
+  proyectoActualId = null;
+  document.getElementById('modalLimpieza').classList.add('hidden');
+  mostrarNotificacion('Datos eliminados', 'Todo el historial y fotos han sido borrados.', '🗑', 'bg-red-100', 'text-red-600');
+}
+
+function cancelarLimpieza() {
+  document.getElementById('modalLimpieza').classList.add('hidden');
+}
