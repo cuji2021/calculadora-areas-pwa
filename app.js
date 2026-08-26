@@ -1235,7 +1235,6 @@ function abrirFotos(idAmbiente) {
   input.type = 'file';
   input.accept = 'image/*';
   input.capture = 'environment';
-  input.multiple = true;
   input.onchange = async (e) => {
     const archivos = Array.from(e.target.files);
     if (archivos.length === 0) return;
@@ -1246,7 +1245,7 @@ function abrirFotos(idAmbiente) {
       await guardarFotoDB(idAmbiente, pid, dataURL);
     }
     await renderFotosAmbiente(idAmbiente);
-    mostrarNotificacion('Fotos guardadas', `${archivos.length} foto(s) agregada(s) al ambiente.`, '📷', 'bg-blue-100', 'text-blue-600');
+    mostrarNotificacion('Foto guardada', 'Foto agregada al ambiente.', '📷', 'bg-blue-100', 'text-blue-600');
   };
   input.click();
 }
