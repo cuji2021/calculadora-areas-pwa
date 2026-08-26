@@ -273,6 +273,7 @@ function agregarAmbiente(datos = null) {
   const superficieInicial = datos ? datos.superficie : '';
   const acabadoInicial = datos ? datos.acabado : '';
   const desperdicioInicial = datos ? datos.desperdicio : '0';
+  const observacionesInicial = datos ? (datos.observaciones || '') : '';
 
   const ambienteHTML = `
     <div id="${idAmbiente}" class="ambiente-card bg-white p-4 rounded-xl shadow-sm border border-slate-200 space-y-3">
@@ -343,6 +344,10 @@ function agregarAmbiente(datos = null) {
           <option value="10" ${desperdicioInicial == '10' ? 'selected' : ''}>10%</option>
           <option value="15" ${desperdicioInicial == '15' ? 'selected' : ''}>15%</option>
         </select>
+      </div>
+
+      <div class="pt-1">
+        <textarea class="observaciones-val w-full text-xs p-2 border border-slate-200 rounded-lg bg-slate-50 resize-none focus:outline-none focus:ring-1 focus:ring-blue-500" rows="2" placeholder="Observaciones...">${observacionesInicial}</textarea>
       </div>
 
       <div class="text-right text-xs pt-1 font-semibold text-slate-700">
@@ -565,7 +570,7 @@ function obtenerEstructuraProyecto() {
       };
     }
 
-    ambientes.push({ nombre, superficie, acabado, desperdicio, mediciones, croquis: croquisData, persiana: persianaData });
+    ambientes.push({ nombre, superficie, acabado, desperdicio, observaciones: amb.querySelector('.observaciones-val').value, mediciones, croquis: croquisData, persiana: persianaData });
   });
 
   return {
@@ -730,6 +735,11 @@ async function generarPDF(compartir = false) {
       const cenefa = amb.querySelector('.persiana-cenefa').value || 'no';
       const motorizada = amb.querySelector('.persiana-motorizada').value || 'no';
       descripcion += `\nMando: ${mando} | Cenefa: ${cenefa} | Motor: ${motorizada}`;
+    }
+
+    const observaciones = amb.querySelector('.observaciones-val').value.trim();
+    if (observaciones) {
+      descripcion += `\nObs: ${observaciones}`;
     }
 
     filas.push([
