@@ -2,7 +2,8 @@ let contadorAmbientes = 0;
 let proyectoActualId = null;
 let inputActivo = null;
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+  await iniciarDB();
   cargarCatalogos();
   agregarAmbiente();
   solicitarPersistencia();
@@ -330,7 +331,10 @@ function agregarAmbiente(datos = null) {
         <button onclick="agregarMedicion('${idAmbiente}', 'suma')" class="flex-1 py-1.5 bg-blue-50 text-blue-600 text-xs font-semibold rounded-lg hover:bg-blue-100">+ Tramo</button>
         <button onclick="agregarMedicion('${idAmbiente}', 'resta')" class="flex-1 py-1.5 bg-amber-50 text-amber-700 text-xs font-semibold rounded-lg hover:bg-amber-100">- Vano</button>
         <button onclick="abrirCroquis('${idAmbiente}')" class="flex-1 py-1.5 bg-slate-100 text-slate-700 text-xs font-semibold rounded-lg hover:bg-slate-200">✏️ Croquis</button>
+        <button onclick="abrirFotos('${idAmbiente}')" class="flex-1 py-1.5 bg-slate-100 text-slate-700 text-xs font-semibold rounded-lg hover:bg-slate-200">📷 Fotos</button>
       </div>
+
+      <div class="fotos-container hidden flex gap-2 flex-wrap pt-2"></div>
 
       <div class="croquis-preview hidden">
         <img class="croquis-img w-full rounded-lg border border-slate-200 mt-2" src="" alt="Croquis">
@@ -595,12 +599,27 @@ function guardarProyecto() {
   }
 
   const proyecto = obtenerEstructuraProyecto();
+  const idAnterior = proyectoActualId || 'temp';
   let historial = JSON.parse(localStorage.getItem('historialMediciones') || '[]');
   const index = historial.findIndex(p => p.id === proyecto.id);
   if (index >= 0) historial[index] = proyecto;
   else historial.unshift(proyecto);
   localStorage.setItem('historialMediciones', JSON.stringify(historial));
   proyectoActualId = proyecto.id;
+
+  // Migrar fotos de 'temp' al ID real si es proyecto nuevo
+  if (idAnterior === 'temp' && dbFotos) {
+    const tx = dbFotos.transaction('fotos', 'readwrite');
+    const store = tx.objectStore('fotos');
+    const request = store.getAll();
+    request.onsuccess = () => {
+      request.result.filter(f => f.proyectoId === 'temp').forEach(f => {
+        f.proyectoId = proyecto.id;
+        store.put(f);
+      });
+    };
+  }
+
   mostrarNotificacion('¡Medición Guardada!', 'Los datos se guardaron correctamente.');
 }
 
@@ -658,6 +677,7 @@ function cargarProyecto(id) {
   document.getElementById('ambientesContainer').innerHTML = '';
   contadorAmbientes = 0;
   proyecto.ambientes.forEach(amb => agregarAmbiente(amb));
+  cargarFotosAlCargarProyecto();
   cerrarHistorial();
 }
 
@@ -820,6 +840,37 @@ async function generarPDF(compartir = false) {
       posY += 75;
     }
   });
+
+  // Agregar fotos al PDF
+  const fotasPDF = await obtenerFotosParaPDF();
+  if (fotasPDF.length > 0) {
+    const ambientes = document.querySelectorAll('.ambiente-card');
+    ambientes.forEach((amb, idx) => {
+      const idAmb = amb.id;
+      const fotasAmb = fotasPDF.filter(f => f.ambienteId === idAmb);
+      if (fotasAmb.length === 0) return;
+
+      const nombreAmb = amb.querySelector('.ambiente-nombre').value || `Ambiente ${idx + 1}`;
+
+      if (posY > 200) { doc.addPage(); posY = 20; }
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(51, 65, 85);
+      doc.text(`Fotos: ${nombreAmb}`, 14, posY);
+      posY += 5;
+
+      let xFoto = 14;
+      fotasAmb.forEach(f => {
+        if (xFoto + 45 > 200) { xFoto = 14; posY += 38; }
+        if (posY > 250) { doc.addPage(); posY = 20; xFoto = 14; }
+        try {
+          doc.addImage(f.dataURL, 'JPEG', xFoto, posY, 43, 33);
+        } catch (e) { /* skip */ }
+        xFoto += 47;
+      });
+      posY += 40;
+    });
+  }
 
   const nombreArchivo = `Medicion_${cliente.replace(/\s+/g, '_')}.pdf`;
 
@@ -1086,4 +1137,164 @@ function confirmarTexto() {
 
 function cancelarTexto() {
   document.getElementById('modalTexto').classList.add('hidden');
+}
+
+// --- INDEXEDDB PARA FOTOS ---
+let dbFotos = null;
+
+function iniciarDB() {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open('fotosAmbientes', 1);
+    request.onupgradeneeded = (e) => {
+      const db = e.target.result;
+      if (!db.objectStoreNames.contains('fotos')) {
+        db.createObjectStore('fotos', { keyPath: 'id', autoIncrement: true });
+      }
+    };
+    request.onsuccess = (e) => {
+      dbFotos = e.target.result;
+      resolve(dbFotos);
+    };
+    request.onerror = (e) => reject(e);
+  });
+}
+
+function guardarFotoDB(ambienteId, proyectoId, dataURL) {
+  return new Promise((resolve, reject) => {
+    const tx = dbFotos.transaction('fotos', 'readwrite');
+    const store = tx.objectStore('fotos');
+    store.add({ ambienteId, proyectoId, dataURL, fecha: Date.now() });
+    tx.oncomplete = () => resolve();
+    tx.onerror = (e) => reject(e);
+  });
+}
+
+function obtenerFotosDB(ambienteId, proyectoId) {
+  return new Promise((resolve, reject) => {
+    const tx = dbFotos.transaction('fotos', 'readonly');
+    const store = tx.objectStore('fotos');
+    const request = store.getAll();
+    request.onsuccess = () => {
+      const todas = request.result;
+      const filtradas = todas.filter(f => f.ambienteId === ambienteId && f.proyectoId === proyectoId);
+      resolve(filtradas);
+    };
+    request.onerror = (e) => reject(e);
+  });
+}
+
+function eliminarFotoDB(id) {
+  return new Promise((resolve, reject) => {
+    const tx = dbFotos.transaction('fotos', 'readwrite');
+    const store = tx.objectStore('fotos');
+    store.delete(id);
+    tx.oncomplete = () => resolve();
+    tx.onerror = (e) => reject(e);
+  });
+}
+
+function eliminarFotosProyectoDB(proyectoId) {
+  return new Promise((resolve, reject) => {
+    const tx = dbFotos.transaction('fotos', 'readwrite');
+    const store = tx.objectStore('fotos');
+    const request = store.getAll();
+    request.onsuccess = () => {
+      const todas = request.result;
+      todas.filter(f => f.proyectoId === proyectoId).forEach(f => store.delete(f.id));
+    };
+    tx.oncomplete = () => resolve();
+    tx.onerror = (e) => reject(e);
+  });
+}
+
+// --- COMPRESIÓN DE FOTO ---
+function comprimirFoto(file) {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const maxAncho = 800;
+        const ratio = Math.min(maxAncho / img.width, 1);
+        canvas.width = img.width * ratio;
+        canvas.height = img.height * ratio;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL('image/jpeg', 0.6));
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+// --- UI FOTOS ---
+function abrirFotos(idAmbiente) {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'image/*';
+  input.capture = 'environment';
+  input.multiple = true;
+  input.onchange = async (e) => {
+    const archivos = Array.from(e.target.files);
+    if (archivos.length === 0) return;
+
+    const pid = proyectoActualId || 'temp';
+    for (const archivo of archivos) {
+      const dataURL = await comprimirFoto(archivo);
+      await guardarFotoDB(idAmbiente, pid, dataURL);
+    }
+    await renderFotosAmbiente(idAmbiente);
+    mostrarNotificacion('Fotos guardadas', `${archivos.length} foto(s) agregada(s) al ambiente.`, '📷', 'bg-blue-100', 'text-blue-600');
+  };
+  input.click();
+}
+
+async function renderFotosAmbiente(idAmbiente) {
+  const pid = proyectoActualId || 'temp';
+  const fotos = await obtenerFotosDB(idAmbiente, pid);
+  const ambEl = document.getElementById(idAmbiente);
+  const container = ambEl.querySelector('.fotos-container');
+
+  if (fotos.length === 0) {
+    container.innerHTML = '';
+    container.classList.add('hidden');
+    return;
+  }
+
+  container.classList.remove('hidden');
+  container.innerHTML = fotos.map(f => `
+    <div class="relative inline-block">
+      <img src="${f.dataURL}" class="w-16 h-16 object-cover rounded-lg border border-slate-200">
+      <button onclick="borrarFoto(${f.id}, '${idAmbiente}')" class="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[9px] rounded-full flex items-center justify-center font-bold">✕</button>
+    </div>
+  `).join('');
+}
+
+async function borrarFoto(fotoId, idAmbiente) {
+  await eliminarFotoDB(fotoId);
+  await renderFotosAmbiente(idAmbiente);
+}
+
+async function cargarFotosAlCargarProyecto() {
+  if (!proyectoActualId) return;
+  document.querySelectorAll('.ambiente-card').forEach(amb => {
+    renderFotosAmbiente(amb.id);
+  });
+}
+
+// Obtener fotos para PDF
+async function obtenerFotosParaPDF() {
+  if (!dbFotos) return [];
+  const pid = proyectoActualId || 'temp';
+  const tx = dbFotos.transaction('fotos', 'readonly');
+  const store = tx.objectStore('fotos');
+  return new Promise((resolve) => {
+    const request = store.getAll();
+    request.onsuccess = () => {
+      resolve(request.result.filter(f => f.proyectoId === pid));
+    };
+    request.onerror = () => resolve([]);
+  });
 }
