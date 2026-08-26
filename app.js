@@ -1277,7 +1277,7 @@ async function renderFotosAmbiente(idAmbiente) {
   container.classList.remove('hidden');
   container.innerHTML = fotos.map(f => `
     <div class="relative inline-block">
-      <img src="${f.dataURL}" class="w-16 h-16 object-cover rounded-lg border border-slate-200">
+      <img src="${f.dataURL}" class="w-16 h-16 object-cover rounded-lg border border-slate-200 cursor-pointer" onclick="verFoto('${f.id}')">
       <button onclick="borrarFoto(${f.id}, '${idAmbiente}')" class="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[9px] rounded-full flex items-center justify-center font-bold">✕</button>
     </div>
   `).join('');
@@ -1286,6 +1286,24 @@ async function renderFotosAmbiente(idAmbiente) {
 async function borrarFoto(fotoId, idAmbiente) {
   await eliminarFotoDB(fotoId);
   await renderFotosAmbiente(idAmbiente);
+}
+
+async function verFoto(fotoId) {
+  const tx = dbFotos.transaction('fotos', 'readonly');
+  const store = tx.objectStore('fotos');
+  const request = store.get(Number(fotoId));
+  request.onsuccess = () => {
+    const foto = request.result;
+    if (foto) {
+      document.getElementById('visorFotoImg').src = foto.dataURL;
+      document.getElementById('modalVisorFoto').classList.remove('hidden');
+    }
+  };
+}
+
+function cerrarVisorFoto() {
+  document.getElementById('modalVisorFoto').classList.add('hidden');
+  document.getElementById('visorFotoImg').src = '';
 }
 
 async function cargarFotosAlCargarProyecto() {

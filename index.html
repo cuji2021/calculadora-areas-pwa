@@ -382,6 +382,16 @@
       </div>
     </div>
 
+    <!-- Modal Visor Foto -->
+    <div
+      id="modalVisorFoto"
+      class="fixed inset-0 bg-black/90 hidden z-[70] flex items-center justify-center p-4"
+      onclick="cerrarVisorFoto()"
+    >
+      <button onclick="cerrarVisorFoto()" class="absolute top-4 right-4 w-8 h-8 bg-white/20 text-white text-lg font-bold rounded-full flex items-center justify-center">✕</button>
+      <img id="visorFotoImg" src="" class="max-w-full max-h-full rounded-lg object-contain" />
+    </div>
+
     <!-- Modal Agregar a Catálogo -->
     <div
       id="modalCatalogo"
