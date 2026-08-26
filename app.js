@@ -844,6 +844,14 @@ async function generarPDF(compartir = false) {
   // Agregar fotos al PDF
   const fotasPDF = await obtenerFotosParaPDF();
   if (fotasPDF.length > 0) {
+    doc.addPage();
+    posY = 20;
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(30, 41, 59);
+    doc.text('REGISTRO FOTOGRÁFICO', 14, posY);
+    posY += 10;
+
     const ambientes = document.querySelectorAll('.ambiente-card');
     ambientes.forEach((amb, idx) => {
       const idAmb = amb.id;
@@ -852,11 +860,11 @@ async function generarPDF(compartir = false) {
 
       const nombreAmb = amb.querySelector('.ambiente-nombre').value || `Ambiente ${idx + 1}`;
 
-      if (posY > 200) { doc.addPage(); posY = 20; }
+      if (posY > 240) { doc.addPage(); posY = 20; }
       doc.setFontSize(9);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(51, 65, 85);
-      doc.text(`Fotos: ${nombreAmb}`, 14, posY);
+      doc.text(`${nombreAmb}`, 14, posY);
       posY += 5;
 
       let xFoto = 14;
@@ -1292,7 +1300,9 @@ async function obtenerFotosParaPDF() {
   return new Promise((resolve) => {
     const request = store.getAll();
     request.onsuccess = () => {
-      resolve(request.result.filter(f => f.proyectoId === pid));
+      // Buscar fotos del proyecto actual O de 'temp' (no guardado aún)
+      const resultado = request.result.filter(f => f.proyectoId === pid || f.proyectoId === 'temp');
+      resolve(resultado);
     };
     request.onerror = () => resolve([]);
   });
