@@ -886,21 +886,25 @@ async function generarPDF(compartir = false) {
     const pdfBlob = doc.output('blob');
     const file = new File([pdfBlob], nombreArchivo, { type: 'application/pdf' });
     const fechaActual = new Date().toLocaleDateString('es-ES');
-    const mensajeWhatsApp = `📋 *REPORTE DE MEDICIÓN DE ÁREAS*\n\n` +
-                            `👤 *Cliente/Proyecto:* ${cliente}\n` +
-                            `📍 *Ubicación:* ${direccion}\n` +
-                            `📅 *Fecha:* ${fechaActual}\n` +
-                            `📐 *Total Material:* ${totalGeneral}\n\n` +
-                            `Adjunto encontrarás el informe detallado en formato PDF.`;
+    const mensajeWhatsApp = `📋 *MEDICIÓN DE ÁREAS*\n👤 ${cliente}\n📍 ${direccion}\n📅 ${fechaActual}\n📐 Total: ${totalGeneral}`;
 
     if (navigator.canShare && navigator.canShare({ files: [file] })) {
       try {
-        await navigator.share({ title: `Reporte - ${cliente}`, text: mensajeWhatsApp, files: [file] });
+        await navigator.share({
+          files: [file],
+          title: nombreArchivo,
+          text: mensajeWhatsApp
+        });
       } catch (err) {
-        if (err.name !== 'AbortError') doc.save(nombreArchivo);
+        if (err.name !== 'AbortError') {
+          doc.save(nombreArchivo);
+        }
       }
     } else {
+      // Fallback: descargar y abrir WhatsApp con mensaje
       doc.save(nombreArchivo);
+      const textoEncoded = encodeURIComponent(mensajeWhatsApp);
+      window.open(`https://wa.me/?text=${textoEncoded}`, '_blank');
     }
   } else {
     // En móvil, abrir el PDF en nueva pestaña para visualización directa
