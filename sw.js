@@ -1,4 +1,4 @@
-const CACHE_NAME = 'calc-areas-v26';
+const CACHE_NAME = 'calc-areas-v27';
 
 const ASSETS = [
   './',

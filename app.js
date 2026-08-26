@@ -244,11 +244,26 @@ function verificarPersiana(idAmbiente) {
   const ambEl = document.getElementById(idAmbiente);
   const superficie = ambEl.querySelector('.superficie-val').value.toLowerCase().trim();
   const attrs = ambEl.querySelector('.persiana-attrs');
-  if (superficie === 'persiana') {
+  const esPersiana = superficie === 'persiana';
+  
+  if (esPersiana) {
     attrs.classList.remove('hidden');
   } else {
     attrs.classList.add('hidden');
   }
+
+  // Cambiar labels de mediciones según tipo
+  ambEl.querySelectorAll('.medicion-row').forEach(med => {
+    const largoInput = med.querySelector('.largo-val');
+    const anchoInput = med.querySelector('.ancho-val');
+    if (esPersiana) {
+      largoInput.placeholder = 'Ancho';
+      anchoInput.placeholder = 'Alto';
+    } else {
+      largoInput.placeholder = 'Largo';
+      anchoInput.placeholder = 'Ancho';
+    }
+  });
 }
 
 function agregarAmbiente(datos = null) {
@@ -389,13 +404,13 @@ function agregarMedicion(idAmbiente, tipo, largo = '', ancho = '', unidad = '') 
       </select>
 
       <input type="number" step="0.01" inputmode="decimal" placeholder="Largo" value="${largo}" readonly 
-             onclick="abrirTeclado(this, 'Largo (m)')"
+             onclick="abrirTeclado(this, this.placeholder + ' (m)')"
              class="largo-val w-1/3 p-2 bg-white border border-slate-300 rounded text-center font-bold text-sm cursor-pointer focus:ring-2 focus:ring-blue-500" oninput="calcularTotales()">
       
       <span class="multiplicador-sign text-slate-400 font-bold ${unidad === 'm' ? 'hidden' : ''}">×</span>
       
       <input type="number" step="0.01" inputmode="decimal" placeholder="Ancho" value="${ancho}" readonly 
-             onclick="abrirTeclado(this, 'Ancho (m)')"
+             onclick="abrirTeclado(this, this.placeholder + ' (m)')"
              class="ancho-val w-1/3 p-2 bg-white border border-slate-300 rounded text-center font-bold text-sm cursor-pointer focus:ring-2 focus:ring-blue-500 ${unidad === 'm' ? 'hidden' : ''}" oninput="calcularTotales()">
       
       <button onclick="eliminarElemento('${idMedicion}')" class="text-slate-400 hover:text-red-500 font-bold px-1 ml-auto">✕</button>
@@ -403,6 +418,15 @@ function agregarMedicion(idAmbiente, tipo, largo = '', ancho = '', unidad = '') 
   `;
 
   container.insertAdjacentHTML('beforeend', medicionHTML);
+  
+  // Si es persiana, actualizar placeholders
+  const superficie = ambienteEl.querySelector('.superficie-val').value.toLowerCase().trim();
+  if (superficie === 'persiana') {
+    const nuevaMed = document.getElementById(idMedicion);
+    nuevaMed.querySelector('.largo-val').placeholder = 'Ancho';
+    nuevaMed.querySelector('.ancho-val').placeholder = 'Alto';
+  }
+  
   calcularTotales();
 }
 
@@ -690,7 +714,11 @@ async function generarPDF(compartir = false) {
       const signo = tipo === 'suma' ? '(+)' : '(-)';
 
       if (unidad === 'm2') {
-        detalles.push(`${signo} ${largo}x${ancho}m²`);
+        if (superficie.toLowerCase() === 'persiana') {
+          detalles.push(`${signo} An:${largo} x Al:${ancho}m²`);
+        } else {
+          detalles.push(`${signo} ${largo}x${ancho}m²`);
+        }
       } else {
         detalles.push(`${signo} ${largo}m (ml)`);
       }
