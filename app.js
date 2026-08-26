@@ -598,6 +598,18 @@ function guardarProyecto() {
     return;
   }
 
+  // Validar que todos los ambientes tengan nombre
+  let ambienteSinNombre = null;
+  document.querySelectorAll('.ambiente-card').forEach(amb => {
+    const nombre = amb.querySelector('.ambiente-nombre').value.trim();
+    if (!nombre && !ambienteSinNombre) ambienteSinNombre = amb;
+  });
+  if (ambienteSinNombre) {
+    mostrarNotificacion('Ambiente sin nombre', 'Todos los ambientes deben tener un nombre asignado.', '⚠️', 'bg-amber-100', 'text-amber-700');
+    ambienteSinNombre.querySelector('.ambiente-nombre').focus();
+    return;
+  }
+
   const proyecto = obtenerEstructuraProyecto();
   const idAnterior = proyectoActualId || 'temp';
   let historial = JSON.parse(localStorage.getItem('historialMediciones') || '[]');
